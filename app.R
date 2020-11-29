@@ -11,7 +11,11 @@ library(stringr)
 library(RSQLite)
 rm(list=ls())
 
+# The UI is pretty simple
+# It only has two sections, the staff directory and the project management section
+# I haven't done anything with project management
 
+# I also haven't decided how I want to search for things.  We'll figure that out when we are done with everything else.
 
 ui <- fluidPage(title = "Directory",
                 h2("Staff directory and project database", align = "center"),
@@ -21,7 +25,8 @@ ui <- fluidPage(title = "Directory",
                 useShinyjs(),
                 shinyalert::useShinyalert(),
                 navbarPage(title = NULL,
-                           windowTitle = "Window title",
+
+                           #  Staff Directory
                            tabPanel("Staff directory",
                                     h4("View and edit the staff directory", align = "center"),
                                     HTML("<br>"),
@@ -33,6 +38,8 @@ ui <- fluidPage(title = "Directory",
                                     HTML("<br>"),
                                     helpText("Please click on a 'view' icon to view selected record and the 'edit' button to add to the record"),
                                     dataTableOutput("mytable")),
+                           
+                           # Project database
                            tabPanel("Project database",
                                     h4("Project text goes here")))
 )
@@ -43,10 +50,11 @@ ui <- fluidPage(title = "Directory",
 
 server <- function(input, output, session) {
   
+  # Connect to the dataabase
   myDB <- dbConnect(RSQLite::SQLite(), "analysts.DB")
   
 
-  
+  # This is the main reactive dataset based on our analyst group
   analysts_df <- reactive({
     
     # Reactive to:
@@ -78,6 +86,7 @@ server <- function(input, output, session) {
 # View a record -----------------------------------------------------------
   #  This "View" page will need to be formatted in some nice manner using standard UI code
   #  This is also where we will include whatever skill information is included in the skills table
+  
   observeEvent(input$info_button, {
     
     sel_row <- input$mytable_row_last_clicked
@@ -171,7 +180,7 @@ server <- function(input, output, session) {
   
   
   
-  # Edit a record -----------------------------------------------------------
+ # Edit a record -----------------------------------------------------------
  # This will edit a record.  Sort of does the same thing we had before, only in the mondal window 
   observeEvent(input$edit_button, {
     
@@ -188,6 +197,23 @@ server <- function(input, output, session) {
     department <- table[table$row_id == row_id, "Department"]
     
     bio <- table[table$row_id == row_id, "Bio"]
+    
+    #Three groups of skills:
+    # Analysis
+    # Coding
+    # Project Management
+    
+    # This will pull the skills for each person
+    # If no skills have been entered, it will initialize the database with that name
+    skills <- dplyr::filter(skills, Name == name)
+    if (nrow(skills) == 0) {
+      skills <- data.frame(Name = name,
+                           Type = "",
+                           Skills = "",
+                           row_id = as.character(row_id))
+      dbAppendTable(myDB, "skills", skills)
+    }
+    
     
     
     # Initialize the check box entries
@@ -217,7 +243,7 @@ server <- function(input, output, session) {
     projMan <- filter(skills, Type == "Project Management")
 
     
-
+    # Again, I did this all with simple Shiny code, but I think we could use an HTMLtemplate to do a lot better
     showModal(
       modalDialog(id = "profile_form",
                   title = NULL,
@@ -298,14 +324,9 @@ server <- function(input, output, session) {
     
 
     
-    
+    # Save the data
     observeEvent(input$save_button, {
       
-      
-      
-      
-    
-    
       oldtable <- dbReadTable(myDB, "analysts") 
       oldskills <- dbReadTable(myDB, "skills")
         oldskills <- oldskills[oldskills$row_id == row_id,]
@@ -363,6 +384,7 @@ server <- function(input, output, session) {
       tempskills <- tempskills[tempskills$row_id != row_id,]
       
       final <- rbind(tempskills, newSkills)
+      final <- final[final$Skills != "", ]
       dbWriteTable(myDB, "skills", final, overwrite = T)
       
       session$reload()
@@ -563,6 +585,8 @@ observeEvent(input$save_new, {
   tempskills <- tempskills[tempskills$row_id != row_id,]
   
   final <- rbind(tempskills, newSkills)
+  final <- final[final$Skills != "", ]
+  
   dbWriteTable(myDB, "skills", final, overwrite = T)
   
   
@@ -576,13 +600,13 @@ observeEvent(input$save_new, {
 
  
   # Data table output -------------------------------------------------------
+  # This renders the initial table - pretty straightforward
   
   output$mytable <- DT::renderDataTable({
     
-    df <- analysts_df() %>% select(-row_id, -Bio)
-    
-    newTable <- DT::datatable(
-      df,
+    df <- analysts_df() %>% 
+      select(-row_id, -Bio) %>%
+      DT::datatable(
       rownames = FALSE,
       escape = FALSE,
       selection = "single",
