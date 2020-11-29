@@ -1,0 +1,12 @@
+name: project_skills
+title: project_skills
+username:
+account: interventionsandimplementation
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 3320835
+bundleId: 3920503
+url: https://interventionsandimplementation.shinyapps.io/project_skills/
+when: 1606692370.1597
+asMultiple: FALSE
+asStatic: FALSE

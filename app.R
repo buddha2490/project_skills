@@ -71,14 +71,14 @@ server <- function(input, output, session) {
                                               type=\"button\" 
                                               class=\"btn btn-primary btn-sm\"
                                               onclick=\"Shiny.onInputChange(&quot;info_button&quot;,  Math.random())\"><i class=\"fa fa-address-card\"></i></button>")
-    analysts$actions <-paste("<button id=\"edit_button\" 
+    analysts$Edits <-paste("<button id=\"edit_button\" 
                            type=\"button\" 
                            class=\"btn btn-link btn-sm\"
                            onclick=\"Shiny.onInputChange(&quot;edit_button&quot;,  Math.random())\"><i class=\"fa fa-edit fa-2x\"></i></button>") 
     
     
     
-    analysts <- dplyr::select(analysts, View = view, Name, Title, Department, Email, Level, HireDate, actions, Bio, row_id)
+    analysts <- dplyr::select(analysts, View = view, Name, Title, Department, Email, Level, HireDate, Edits, Bio, row_id)
     return(analysts)
   })
   
