@@ -1,0 +1,32 @@
+#download_button.btn.btn-default.shiny-download-link.shiny-bound-output,
+#image_download.btn.btn-default.shiny-download-link.shiny-bound-output,
+#excel_download.btn.btn-default.shiny-download-link.shiny-bound-output{
+  background-color: #e7eef5;
+  padding: 0;
+  border-style: none;
+}
+
+#edit_button{
+  color: #ffc107;
+}
+
+#edit_button:hover{
+  color: #ffea07;
+}
+
+.btn-circle {
+  width: 30px;
+  height: 30px;
+  text-align: center;
+  padding: 6px 0;
+  font-size: 12px;
+  line-height: 1.42;
+  border-radius: 15px;
+}
+
+.button-container{
+  padding-right: 100px;
+  margin-bottom: 20px;
+  position:relative;
+  z-index:20;
+}
