@@ -12,6 +12,7 @@ library(RSQLite)
 rm(list=ls())
 
 
+
 ui <- fluidPage(title = "Directory",
                 h2("Staff directory and project database", align = "center"),
                 theme = shinytheme("darkly"),
@@ -82,6 +83,8 @@ server <- function(input, output, session) {
     sel_row <- input$mytable_row_last_clicked
     row_id <- analysts_df()[sel_row, "row_id"]
     table <- dbReadTable(myDB, "analysts")
+    skills <- dbReadTable(myDB, "skills")
+    
     
     # Profile values
     title <- table[table$row_id == row_id, "Title"]
@@ -98,6 +101,30 @@ server <- function(input, output, session) {
     
     bio <- table[table$row_id == row_id, "Bio"]
     
+    #Three groups of skills:
+    # Analysis
+    # Coding
+    # Project Management
+    
+    # This will pull the skills for each person
+    # If no skills have been entered, it will initialize the database with that name
+    skills <- dplyr::filter(skills, Name == name)
+    if (nrow(skills) == 0) {
+      skills <- data.frame(Name = name,
+                           Type = "",
+                           Skills = "",
+                           row_id = as.character(row_id))
+      dbAppendTable(myDB, "skills", skills)
+    }
+    coding <- filter(skills, Type == "Coding")
+    coding <- paste(coding$Skills, collapse = ", ")
+
+    analysis <- filter(skills, Type == "Analysis")
+    analysis <- paste(analysis$Skills, collapse = ", ")
+    
+    projMan <- filter(skills, Type == "Project Management")
+    projMan <- paste(projMan$Skills, collapse = ", ")
+        
     # I'm doing this with html tags, but we could create an htmlTemplate() within the 
     # fluidPage() to be much nicer
     showModal(
@@ -118,8 +145,28 @@ server <- function(input, output, session) {
                       HTML("<br><br>"),
                       verticalLayout(
                       h4(strong("Bio")),
-                      h5(bio))
-                      )))))
+                      h5(bio)),
+                      HTML("<br><br>"),
+                      verticalLayout(
+                        fluidRow(
+                          column(4,
+                                 h4("Coding skills")),
+                          column(8,
+                                 helpText(coding))
+                        ),
+                        fluidRow(
+                          column(4,
+                                 h4("Analysis skills")),
+                          column(8,
+                                 helpText(analysis))
+                        ),
+                        fluidRow(
+                          column(4,
+                                 h4("Project management skills")),
+                          column(8,
+                                 helpText(projMan))
+                        )))))))
+                       
   })
   
   
@@ -132,6 +179,7 @@ server <- function(input, output, session) {
     sel_row <- input$mytable_row_last_clicked
     row_id <- analysts_df()[sel_row, "row_id"]
     table <- dbReadTable(myDB, "analysts")
+    skills <- dbReadTable(myDB, "skills")
     
     # Profile values
     title <- table[table$row_id == row_id, "Title"]
@@ -142,7 +190,34 @@ server <- function(input, output, session) {
     bio <- table[table$row_id == row_id, "Bio"]
     
     
+    # Initialize the check box entries
+    initialCodes <- c("SAS", "R", "Python", "C", "C++", "MATLAB")
+    initialAnalysis <- c("Logistic Regression", "ANOVA", "Time Series",
+                         "Survival Analysis", "Machine Learning", "GIS")
+    initialProjects <- c("PMP", "Grant Writing", "Grant Administration",
+                         "Hiring", "Program Design", "Event Planning")
     
+    # Keep a running tab of the skills people have included
+    allcoding <- filter(skills, Type == "Coding" & Skills != "")$Skills %>%
+      c(initialCodes)
+      
+    allanalysis <- filter(skills, Type == "Analysis" & Skills != "")$Skills %>%
+      c(initialAnalysis)
+
+    allprojMan <- filter(skills, Type == "Project Management" & Skills != "")$Skills %>%
+      c(initialProjects)
+    
+    
+    # Just the skills of the person of interest
+    mySkills <- filter(skills, Name == name & Skills != "") 
+    coding <- filter(skills, Type == "Coding")
+
+    analysis <- filter(skills, Type == "Analysis")
+
+    projMan <- filter(skills, Type == "Project Management")
+
+    
+
     showModal(
       modalDialog(id = "profile_form",
                   title = NULL,
@@ -171,15 +246,69 @@ server <- function(input, output, session) {
                                     label = "Introduce yourself (bio)",
                                     value = bio,
                                     height = '400px'),
+                      HTML("<br><br>"),
+                      h3("Skills database", align = "center"),
+                      splitLayout(
+                        verticalLayout(
+                      checkboxGroupInput(inputId = "newCoding",
+                                         label = "Coding skills",
+                                         choices = c(unique(allcoding), "Other (specify)"),
+                                         selected = coding$Skills),
+                      uiOutput("codingOther")),
+                      verticalLayout(
+                      checkboxGroupInput(inputId = "newAnalysis",
+                                         label = "Analysis skills",
+                                         choices = c(unique(allanalysis), "Other (specify)"),
+                                         selected = analysis$Skills),
+                      uiOutput("analysisOther")),
+                      verticalLayout(
+                      checkboxGroupInput(inputId = "newProjMan",
+                                         label = "Project Management Skills",
+                                         choices = c(unique(allprojMan), "Other (specify)"),
+                                         selected = projMan$Skills),
+                      uiOutput("projManOther"))),
                       actionButton("save_button", "Update your information", icon=icon("save"),
                                    status = "success")
-                    )
-                  )
-      ))
+                    ))))
+    
+    
+
+    output$codingOther <- renderUI({
+      validate(need(input$newCoding, ""))
+      if ("Other (specify)" %in% input$newCoding) {
+        textInput(inputId = "codingOther",
+                  label = "Please specify")
+      }
+    })
+    output$analysisOther <- renderUI({
+      validate(need(input$newAnalysis, ""))
+      if ("Other (specify)" %in% input$newAnalysis) {
+        textInput(inputId = "analysisOther",
+                  label = "Please specify")
+      }
+    })
+    output$projManOther <- renderUI({
+      validate(need(input$newProjMan, ""))
+      if ("Other (specify)" %in% input$newProjMan) {
+        textInput(inputId = "projManOther",
+                  label = "Please specify")
+      }
+    })
+    
+    
+
+    
     
     observeEvent(input$save_button, {
       
+      
+      
+      
+    
+    
       oldtable <- dbReadTable(myDB, "analysts") 
+      oldskills <- dbReadTable(myDB, "skills")
+        oldskills <- oldskills[oldskills$row_id == row_id,]
       
       newname <- input$newname
       newtitle <- input$newtitle
@@ -198,6 +327,44 @@ server <- function(input, output, session) {
       final <- bind_rows(oldtable,newtable)
       final <- final[order(final$row_id),]
       dbWriteTable(myDB, "analysts", final, overwrite = T)
+      
+      # Now compile the skills
+      codingString <- input$newCoding
+      codingString <- codingString[codingString != "Other (specify)"]
+      otherCodes <- ifelse(is.null(input$codingOther), "", input$codingOther)
+      codingString <- c(codingString, otherCodes)
+      codingString <- data.frame(Name = newname,
+                                 Type = "Coding",
+                                 Skills = codingString,
+                                 row_id = as.character(row_id))
+      
+      
+      analyticString <- input$newAnalysis
+      analyticString <- analyticString[analyticString != "Other (specify)"]
+      otherAnalysis <- ifelse(is.null(input$analysisOther), "", input$analysisOther)
+      analyticString <- c(analyticString, otherAnalysis)
+      analyticString <- data.frame(Name = newname,
+                                 Type = "Analysis",
+                                 Skills = analyticString,
+                                 row_id = as.character(row_id))
+      
+      projString <- input$newProjMan
+      projString <- projString[projString != "Other (specify)"]
+      otherProj <- ifelse(is.null(input$projManOther), "", input$projManOther)
+      projString <- c(projString, otherProj)
+      projString <- data.frame(Name = newname,
+                                   Type = "Project Management",
+                                   Skills = projString,
+                                   row_id = as.character(row_id))
+      newSkills <- rbind(codingString, analyticString, projString)
+      
+      
+      tempskills <- dbReadTable(myDB, "skills") 
+      tempskills <- tempskills[tempskills$row_id != row_id,]
+      
+      final <- rbind(tempskills, newSkills)
+      dbWriteTable(myDB, "skills", final, overwrite = T)
+      
       session$reload()
       
     })
@@ -210,6 +377,34 @@ server <- function(input, output, session) {
 
   observeEvent(input$add_button, {
 
+    
+    skills <- dbReadTable(myDB, "skills")
+    
+    
+    # Initialize the check box entries
+    initialCodes <- c("SAS", "R", "Python", "C", "C++", "MATLAB")
+    initialAnalysis <- c("Logistic Regression", "ANOVA", "Time Series",
+                         "Survival Analysis", "Machine Learning", "GIS")
+    initialProjects <- c("PMP", "Grant Writing", "Grant Administration",
+                         "Hiring", "Program Design", "Event Planning")
+    
+    
+    coding <- c(initialCodes,
+               dplyr::filter(skills, Type == "Coding")$Skills) %>%
+               unique()
+    coding <- coding[coding != ""]
+    analysis <-c(initialAnalysis,
+                 dplyr::filter(skills, Type == "Analysis")$Skills) %>%
+                 unique()
+    analysis <- analysis[analysis != ""]
+    projman <- c(initialProjects,
+                 dplyr::filter(skills, Type == "Project Management")$Skills) %>%
+                 unique()
+    projman <- projman[projman != ""]
+    
+    
+    
+    
     showModal(
       modalDialog(id = "new_form",
                   title = NULL,
@@ -260,11 +455,57 @@ server <- function(input, output, session) {
                                      height = '400px',
                                      value = ""),
                       HTML("<br><br>"),
+                      h3("Skills database", align = "center"),
+                      splitLayout(
+                        verticalLayout(
+                          checkboxGroupInput(inputId = "addCoding",
+                                             label = "Coding skills",
+                                             choices = c(coding, "Other (specify)"),
+                                             selected = NULL),
+                          uiOutput("addcodingOther")),
+                        verticalLayout(
+                          checkboxGroupInput(inputId = "addAnalysis",
+                                             label = "Analysis skills",
+                                             choices = c(analysis, "Other (specify)"),
+                                             selected = NULL),
+                          uiOutput("addanalysisOther")),
+                        verticalLayout(
+                          checkboxGroupInput(inputId = "addProjMan",
+                                             label = "Project Management Skills",
+                                             choices = c(allprojMan, "Other (specify)"),
+                                             selected = NULL),
+                          uiOutput("addprojManOther"))),
+                      HTML("<br><br>"),
                       actionButton(inputId = "save_new",
                                    label = "Save your information",
                                    icon = icon("save"),
                                    status = "success")
                     ))))
+    
+    
+    output$addcodingOther <- renderUI({
+      validate(need(input$addCoding, ""))
+      if ("Other (specify)" %in% input$addCoding) {
+        textInput(inputId = "addcodingOther",
+                  label = "Please specify")
+      }
+    })
+    output$addanalysisOther <- renderUI({
+      validate(need(input$addAnalysis, ""))
+      if ("Other (specify)" %in% input$addAnalysis) {
+        textInput(inputId = "addanalysisOther",
+                  label = "Please specify")
+      }
+    })
+    output$addprojManOther <- renderUI({
+      validate(need(input$addProjMan, ""))
+      if ("Other (specify)" %in% input$addProjMan) {
+        textInput(inputId = "addprojManOther",
+                  label = "Please specify")
+      }
+    })
+    
+    
 
 observeEvent(input$save_new, {
 
@@ -284,6 +525,47 @@ observeEvent(input$save_new, {
   # Save it to the SQL file
   dbAppendTable(myDB, "analysts", foo)
 
+  
+  
+  
+  # Now compile the skills
+  codingString <- input$addCoding
+  codingString <- codingString[codingString != "Other (specify)"]
+  otherCodes <- ifelse(is.null(input$addcodingOther), "", input$addcodingOther)
+  codingString <- c(codingString, otherCodes)
+  codingString <- data.frame(Name = input$addname,
+                             Type = "Coding",
+                             Skills = codingString,
+                             row_id = as.character(row_id))
+  
+  
+  analyticString <- input$addAnalysis
+  analyticString <- analyticString[analyticString != "Other (specify)"]
+  otherAnalysis <- ifelse(is.null(input$addanalysisOther), "", input$addanalysisOther)
+  analyticString <- c(analyticString, otherAnalysis)
+  analyticString <- data.frame(Name = input$addname,
+                               Type = "Analysis",
+                               Skills = analyticString,
+                               row_id = as.character(row_id))
+  
+  projString <- input$ProjMan
+  projString <- projString[projString != "Other (specify)"]
+  otherProj <- ifelse(is.null(input$addprojManOther), "", input$addprojManOther)
+  projString <- c(projString, otherProj)
+  projString <- data.frame(Name = input$addname,
+                           Type = "Project Management",
+                           Skills = projString,
+                           row_id = as.character(row_id))
+  newSkills <- rbind(codingString, analyticString, projString)
+  
+  
+  tempskills <- dbReadTable(myDB, "skills") 
+  tempskills <- tempskills[tempskills$row_id != row_id,]
+  
+  final <- rbind(tempskills, newSkills)
+  dbWriteTable(myDB, "skills", final, overwrite = T)
+  
+  
   session$reload()
   
 
