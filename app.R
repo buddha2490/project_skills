@@ -11,6 +11,8 @@ library(stringr)
 library(RSQLite)
 rm(list=ls())
 
+
+
 # The UI is pretty simple
 # It only has two sections, the staff directory and the project management section
 # I haven't done anything with project management
@@ -78,7 +80,7 @@ server <- function(input, output, session) {
     
     
     
-    analysts <- dplyr::select(analysts, View = view, Name, Title, Department, Email, Level, HireDate, Edits, Bio, row_id)
+    analysts <- dplyr::select(analysts, View = view, Name, Title, Department, Email, Phone, HireDate, Edits, Bio, row_id)
     return(analysts)
   })
   
@@ -195,6 +197,7 @@ server <- function(input, output, session) {
     name <- table[table$row_id == row_id, "Name"]
     email <- table[table$row_id == row_id, "Email"]
     department <- table[table$row_id == row_id, "Department"]
+    phone <- table[table$row_id == row_id, "Phone"]
     
     bio <- table[table$row_id == row_id, "Bio"]
     
@@ -266,6 +269,9 @@ server <- function(input, output, session) {
                                 label = "Department",
                                 value = department)
                       ),
+                      textInput(inputId = "newphone",
+                                label = "Preferred phone number",
+                                value = phone),
                       HTML("<br>"),
                       textAreaInput(inputId = "newbio",
                                     label = "Introduce yourself (bio)",
@@ -335,11 +341,13 @@ server <- function(input, output, session) {
       newemail <- input$newemail
       newdepartment <- input$newdepartment
       newbio <- input$newbio
+      newphone <- input$newphone
       
       newtable <- oldtable[oldtable$row_id == row_id,]
       newtable$Name <- newname
       newtable$Title <- newtitle
       newtable$Email <- newemail
+      newtable$Phone <- newphone
       newtable$Bio <- newbio
       newtable$Department <- newdepartment
       
@@ -457,9 +465,9 @@ server <- function(input, output, session) {
                                 ),
                       HTML("<br><br>"),
                       splitLayout(
-                        textInput(inputId = "addlevel",
-                                  label = "Career level",
-                                  placeholder = "E1, E2, etc",
+                        textInput(inputId = "addphone",
+                                  label = "Preferred phone number",
+                                  placeholder = "555-555-5555",
                                   value = ""),
                         textInput(inputId = "addfunction",
                                   label = "Job function",
@@ -537,7 +545,7 @@ observeEvent(input$save_new, {
                     Title = input$addtitle,
                     Department = input$adddepartment,
                     Email = input$addemail,
-                    Level = input$addlevel,
+                    Phone = input$addphone,
                     Function = input$addfunction,
                     HireDate = input$addhiredate,
                     row_id = as.character(maxRow + 1),
