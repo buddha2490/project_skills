@@ -12,8 +12,11 @@ library(RSQLite)
 rm(list=ls())
 
 
+# This comment is a little change to the program that I can push to my new branch
+# I can then push this to the forked repository
+# Once it is pushed, I can request that the owner of the master version
+# merge it with the master account
 
-# make some changes
 
 
 
