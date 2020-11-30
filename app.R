@@ -214,9 +214,8 @@ server <- function(input, output, session) {
       dbAppendTable(myDB, "skills", skills)
     }
     
-    
-    
-    # Initialize the check box entries
+              
+   # Initialize the check box entries
     initialCodes <- c("SAS", "R", "Python", "C", "C++", "MATLAB")
     initialAnalysis <- c("Logistic Regression", "ANOVA", "Time Series",
                          "Survival Analysis", "Machine Learning", "GIS")
@@ -494,7 +493,7 @@ server <- function(input, output, session) {
                         verticalLayout(
                           checkboxGroupInput(inputId = "addProjMan",
                                              label = "Project Management Skills",
-                                             choices = c(allprojMan, "Other (specify)"),
+                                             choices = c(projman, "Other (specify)"),
                                              selected = NULL),
                           uiOutput("addprojManOther"))),
                       HTML("<br><br>"),
