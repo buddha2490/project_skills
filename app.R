@@ -29,13 +29,12 @@ ui <- fluidPage(title = "Directory",
 
                            #  Staff Directory
                            tabPanel("Staff directory",
-                                    h4("View and edit the staff directory", align = "center"),
                                     HTML("<br>"),
                                     verticalLayout(
-                                    div(class="button-container", align="right",
+                                    div(class="button-container", align="center",
                                         circleButton("add_button", icon = icon("plus"), status = "success",
                                                      size = "sm", title = "label"),
-                                    helpText("Click to add a new record", align = "right"))),
+                                    helpText("Click to add a new record", align = "center"))),
                                     HTML("<br>"),
                                     helpText("Please click on a 'view' icon to view selected record and the 'edit' button to add to the record"),
                                     dataTableOutput("mytable")),
