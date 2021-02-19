@@ -41,8 +41,18 @@ ui <- fluidPage(title = "Directory",
                            
                            # Project database
                            tabPanel("Project database",
-                                    h4("Project text goes here")))
-)
+                                    HTML("<br>"),
+                                    verticalLayout(
+                                    div(class="button-container", align="center",
+                                          circleButton("projadd_button", icon = icon("plus"), status = "success",
+                                                       size = "sm", title = "label"),
+                                          helpText("Click to add a new project", align = "center"))),
+                                    HTML("<br>"),
+                                    helpText("Please click on a 'view' icon to view selected record and the 'edit' button to add to the record"),
+                                    dataTableOutput("myprojtable", width="100%")) #added scrolling option in the datatable output below
+                                    #we will probably want to change column names, too  
+                            )
+                )
 
 
                    
@@ -50,10 +60,58 @@ ui <- fluidPage(title = "Directory",
 
 server <- function(input, output, session) {
   
-  # Connect to the dataabase
+  #Connect to the database
   myDB <- dbConnect(RSQLite::SQLite(), "analysts.DB")
-  
 
+  # #just do this once and then comment it out to initialize the projects table in the database we already have.
+  # #Should go in Brian's initialization code, but I don't have it in the repo
+  # pmgmt <- data.frame(
+  #   row_id=as.numeric(1), #does it start at 0 or 1?
+  #   projectName = as.character("Project 1"),  # name of project
+  #   projectDescription = as.character("It's a test project"), #description
+  #   ghORregional = as.logical(TRUE),
+  #   cancerArea = as.character("Lung cancer"),
+  #   fundingSource = as.character("Federal"),
+  #   grantName = as.character("RWJF Grant"),
+  #   fundingAmount = as.character("$120000"), #could be numeric, but I dont know if they'd be putting other kinds of values here like "variable/unknown"
+  #   fteFunded = as.character("Jane"), #not sure if we want this to be populated with people from the staff database. Probably, but lets handle that later
+  #   projectLead = as.character("John"), #probably also want this to be able to be populated by staff table values
+  #   projectCoreStaff = as.character("Matt"), #same as above
+  #   projectStart = as.numeric(1000), #not sure how dates will convert, but if we save things as integer dates with an origin we should be able to make it work easily
+  #   projectEnd = as.numeric(1500), #same as above
+  #   intersectCC = as.logical(FALSE), #does it intersect cancer control staff?
+  #   ifsoHow = as.character("Cancer Control isn't involved"), #for yes responses to above
+  #   howTracked = as.character("Not Tracked"), #will want their feedback on whether to set firm choices or not
+  #   partnerType = as.character("No Partner"),
+  #   locations = as.character("Atlanta, GA"),
+  #   reportingReqs = as.character("Full Reporting"),
+  #   acsMarketingComms = as.character("Brian in Comms") #will also probably want this to be able to be filled from staff names
+  # )
+  # 
+  # dbWriteTable(myDB, "pmgmt", pmgmt, overwrite=TRUE)
+
+  project_df <- reactive({
+    
+    #reactive to:
+    input$projadd_button
+    input$projinfo_button
+    input$projedit_button
+    
+    projTable <- dbReadTable(myDB, "pmgmt")
+    projTable$projectStart <-as.Date(projTable$projectStart, origin = "1970-01-01")
+    projTable$projectEnd <-as.Date(projTable$projectEnd, origin = "1970-01-01")
+    
+    projTable$view <- paste("<button id=\"projinfo_button\" 
+                                              type=\"button\" 
+                                              class=\"btn btn-primary btn-sm\"
+                                              onclick=\"Shiny.onInputChange(&quot;projinfo_button&quot;,  Math.random())\"><i class=\"fa fa-address-card\"></i></button>")
+    projTable$Edits <-paste("<button id=\"projedit_button\" 
+                           type=\"button\" 
+                           class=\"btn btn-link btn-sm\"
+                           onclick=\"Shiny.onInputChange(&quot;projedit_button&quot;,  Math.random())\"><i class=\"fa fa-edit fa-2x\"></i></button>") 
+    return(projTable)
+  })
+  
   # This is the main reactive dataset based on our analyst group
   analysts_df <- reactive({
     
@@ -179,6 +237,72 @@ server <- function(input, output, session) {
   })
   
   
+  #the above, but for projects. Can remove some things, currently no need for a long data set anywhere in the project data
+  
+  observeEvent(input$projinfo_button, {
+    
+    sel_row <- input$myprojtable_row_last_clicked #not sure about this last clicked functionality
+    row_id <- project_df()[sel_row, "row_id"]
+    table <- dbReadTable(myDB, "pmgmt")
+
+    
+    
+    # Profile values
+    projectName <- table[table$row_id == row_id, "projectName"]
+    projectDescription <- table[table$row_id == row_id, "projectDescription"]
+    projectStart <- table[table$row_id == row_id, "projectStart"] %>%
+      as.Date(origin = "1970-01-01")
+    projectEnd <- table[table$row_id == row_id, "projectEnd"] %>%
+      as.Date(origin = "1970-01-01")
+    ghORregional <- ifelse(table[table$row_id == row_id, "ghORregional"]==TRUE, "GH", "Regional")
+    cancerArea <- table[table$row_id == row_id, "cancerArea"]
+    fundingSource <- table[table$row_id == row_id, "fundingSource"]
+    grantName <- table[table$row_id == row_id, "grantName"]
+    fundingAmount <- table[table$row_id == row_id, "fundingAmount"]
+    fteFunded <- table[table$row_id == row_id, "fteFunded"]
+    projectLead <- table[table$row_id == row_id, "projectLead"]
+    projectCoreStaff <- table[table$row_id == row_id, "projectCoreStaff"]
+    intersectCC <- ifelse(table[table$row_id == row_id, "intersectCC"]==TRUE, "Yes", "No")
+    ifsoHow <- table[table$row_id == row_id, "ifsoHow"]
+    howTracked <- table[table$row_id == row_id, "howTracked"]
+    partnerType <- table[table$row_id == row_id, "partnerType"]
+    locations <- table[table$row_id == row_id, "locations"]
+    reportingReqs <- table[table$row_id == row_id, "reportingReqs"]
+    acsMarketingComms <- table[table$row_id == row_id, "acsMarketingComms"]
+    
+    # I'm doing this with html tags, but we could create an htmlTemplate() within the 
+    # fluidPage() to be much nicer
+    showModal(
+      modalDialog(id = "project_form",
+                  title = NULL,
+                  footer = modalButton("Dismiss"),
+                  easyClose = TRUE,
+                  size="l",
+                  div(
+                    fluidPage(
+                      theme = shinytheme("darkly"),
+                      HTML('<center><img src="ACS.png"></center>'),
+                      h3("Project information", align = "center"),
+                      h4(projectName, align = "center"),
+                      h5(projectDescription, align = "center"),
+                      h5(paste("Lead: ", projectLead), align = "center"),
+                      h5(paste("Funding Source: ", fundingSource), align = "center"),
+                      h5(paste("Project start date: ", projectStart, " Project end date: ", projectEnd)),
+                      h5(paste("GH or Regional: ", ghORregional)),
+                      h5(paste("Cancer Location: ", cancerArea, " Funding Amount: ", fundingAmount, " Source: ", fundingSource)),
+                      h5(paste("Intersects with Cancer Control: ", intersectCC, " , If so, how: ", ifsoHow)),
+                      h5(paste("Grant Name: ", grantName)),
+                      h5(paste("Project Core Staff: ", projectCoreStaff)),
+                      h5(paste("Location: ", locations)),
+                      h5(paste("How we track: ", howTracked)),
+                      h5(paste("Reporting Requirements: ", reportingReqs)),
+                      h5(paste("Comms staff contacts: ", acsMarketingComms)),
+                      h5(paste("funded FTE: ", fteFunded))
+                           ))))
+    
+  })
+  
+  
   
  # Edit a record -----------------------------------------------------------
  # This will edit a record.  Sort of does the same thing we had before, only in the mondal window 
@@ -224,8 +348,8 @@ server <- function(input, output, session) {
                          "Hiring", "Program Design", "Event Planning")
     
     # Keep a running tab of the skills people have included
-    allcoding <- filter(skills, Type == "Coding" & Skills != "")$Skills %>%
-      c(initialCodes)
+    allcoding <- filter(skills, Type == "Coding" & Skills != "")$Skills %>% #never seen this syntax of subsetting/selecting before. Interesting!
+      c(initialCodes) #or using piping to add to a vector... Learn something new every day
       
     allanalysis <- filter(skills, Type == "Analysis" & Skills != "")$Skills %>%
       c(initialAnalysis)
@@ -323,8 +447,7 @@ server <- function(input, output, session) {
                   label = "Please specify")
       }
     })
-    
-    
+  
 
     
     # Save the data
@@ -397,6 +520,101 @@ server <- function(input, output, session) {
     })
   })
   
+  # Edit a Project
+  # This will edit a record.  Sort of does the same thing we had before, only in the mondal window
+  observeEvent(input$projedit_button, {
+
+    sel_row <- input$myprojtable_row_last_clicked
+    row_id <- project_df()[sel_row, "row_id"]
+    table <- dbReadTable(myDB, "pmgmt")
+
+
+    # Profile values
+    projectName <- table[table$row_id == row_id, "projectName"]
+    projectDescription <- table[table$row_id == row_id, "projectDescription"]
+    projectStart <- table[table$row_id == row_id, "projectStart"] %>%
+      as.Date(origin = "1970-01-01")
+    projectEnd <- table[table$row_id == row_id, "projectEnd"] %>%
+      as.Date(origin = "1970-01-01")
+    ghORregional <- ifelse(table[table$row_id == row_id, "ghORregional"]==TRUE, "GH", "Regional")
+    cancerArea <- table[table$row_id == row_id, "cancerArea"]
+    fundingSource <- table[table$row_id == row_id, "fundingSource"]
+    grantName <- table[table$row_id == row_id, "grantName"]
+    fundingAmount <- table[table$row_id == row_id, "fundingAmount"]
+    fteFunded <- table[table$row_id == row_id, "fteFunded"]
+    projectLead <- table[table$row_id == row_id, "projectLead"]
+    projectCoreStaff <- table[table$row_id == row_id, "projectCoreStaff"]
+    intersectCC <- ifelse(table[table$row_id == row_id, "intersectCC"]==TRUE, "Yes", "No")
+    ifsoHow <- table[table$row_id == row_id, "ifsoHow"]
+    howTracked <- table[table$row_id == row_id, "howTracked"]
+    partnerType <- table[table$row_id == row_id, "partnerType"]
+    locations <- table[table$row_id == row_id, "locations"]
+    reportingReqs <- table[table$row_id == row_id, "reportingReqs"]
+    acsMarketingComms <- table[table$row_id == row_id, "acsMarketingComms"]
+
+
+
+    # Will need to add other fields if they want this kind of setup
+    showModal(
+      modalDialog(id = "project_form",
+                  title = NULL,
+                  footer = modalButton("Dismiss"),
+                  easyClose = TRUE,
+                  div(
+                    fluidPage(
+                      theme = shinytheme("darkly"),
+                      splitLayout(
+                        textInput(inputId = "new_projectName",
+                                  label = "Name",
+                                  value = projectName),
+                        textInput(inputId = "new_projectLead",
+                                  label = "Leader",
+                                  value = projectLead)),
+                      splitLayout(
+                        textInput(inputId = "new_grantName",
+                                  label = "Grant Name",
+                                  value = grantName),
+                        textInput(inputId = "new_fundingAmount",
+                                  label = "Funding Amount",
+                                  value = fundingAmount)
+                      ),
+                      textInput(inputId = "new_locations",
+                                label = "Location",
+                                value = locations),
+                      HTML("<br>"),
+                      textAreaInput(inputId = "new_projectDescription",
+                                    label = "Describe the Project",
+                                    value = projectDescription,
+                                    height = '400px'),
+                      actionButton("projsave_button", "Update your project info", icon=icon("save"),
+                                   status = "success")
+                    ))))
+
+
+    # Save the data
+    observeEvent(input$projsave_button, {
+
+      oldtable <- dbReadTable(myDB, "pmgmt")
+
+      newtable <- oldtable[oldtable$row_id == row_id,]
+      newtable$projectName <- input$new_projectName
+      newtable$projectLead <- input$new_projectLead
+      newtable$grantName <- input$new_grantName
+      newtable$fundingAmount <- input$new_fundingAmount
+      newtable$locations <- input$new_locations
+      newtable$projectDescription <- input$new_projectDescription
+
+      oldtable <- oldtable[oldtable$row_id != row_id,]
+      final <- bind_rows(oldtable,newtable)
+      final <- final[order(final$row_id),]
+      dbWriteTable(myDB, "pmgmt", final, overwrite = T)
+
+
+      session$reload()
+
+    })
+  })
+
 
 # Add a record ------------------------------------------------------------
 # This will need a bit of work, since we need to include all the things in the database
@@ -602,6 +820,75 @@ observeEvent(input$save_new, {
 
       })
 
+  
+  # Add a project
+  # This will need a bit of work, since we need to include all the things in the database
+  # But for a first pass this isn't too bad
+  
+  observeEvent(input$projadd_button, {
+    
+    showModal(
+      modalDialog(id = "new_project",
+                  title = NULL,
+                  footer = modalButton("Dismiss"),
+                  easyClose = TRUE,
+                  div(
+                    fluidPage(
+                      theme = shinytheme("darkly"),
+                      splitLayout(
+                        textInput(inputId = "add_projectName",
+                                  label = "Name",
+                                  value = ""),
+                        textInput(inputId = "add_projectLead",
+                                  label = "Leader",
+                                  value = "")),
+                      splitLayout(
+                        textInput(inputId = "add_grantName",
+                                  label = "Grant Name",
+                                  value = ""),
+                        textInput(inputId = "add_fundingAmount",
+                                  label = "Funding Amount",
+                                  value = "$")
+                      ),
+                      textInput(inputId = "add_locations",
+                                label = "Location",
+                                value = ""),
+                      HTML("<br>"),
+                      textAreaInput(inputId = "add_projectDescription",
+                                    label = "Describe the Project",
+                                    value = "",
+                                    height = '400px'),
+                      actionButton(inputId = "projsave_new",
+                                   label = "Save your new project",
+                                   icon = icon("save"),
+                                   status = "success")
+                    ))))
+    
+    
+    
+    observeEvent(input$projsave_new, {
+      
+      table <- dbReadTable(myDB, "pmgmt")
+      maxRow <- as.numeric(max(table$row_id))
+      
+      foo <- data.frame(
+        row_id = as.character(maxRow + 1),
+        projectName = input$add_projectName,
+        projectLead = input$add_projectLead,
+        grantName = input$add_grantName,
+        fundingAmount = input$add_fundingAmount,
+        locations = input$add_locations,
+        projectDescription = input$add_projectDescription)
+      
+      # Save it to the SQL file
+      dbAppendTable(myDB, "pmgmt", foo)
+      
+      session$reload()
+      
+    })
+    
+  })
+  
 
  
   # Data table output -------------------------------------------------------
@@ -625,6 +912,24 @@ observeEvent(input$save_new, {
                        "}")))
   })
   
+  output$myprojtable <- DT::renderDataTable({
+    
+    df <- project_df() %>% 
+      select(projectName, projectDescription, projectLead, locations, projectStart, projectEnd, view, Edits) %>%
+      DT::datatable(
+        rownames = FALSE,
+        escape = FALSE,
+        selection = "single",
+        options = list(searching = TRUE, 
+                       lengthChange = FALSE,
+                       pageLength = 20,
+                       autoWidth = FALSE,
+                       scrollX = TRUE,#added scrolling, but we could also select only important variables to include (currently we include everything)
+                       initComplete = JS(
+                         "function(settings, json) {",
+                         "$(this.api().table().header()).css({'background-color': '#375a7f', 'color': '#fff'});",
+                         "}")))
+  })
   
 }
 shinyApp(ui, server)
