@@ -649,8 +649,8 @@ server <- function(input, output, session) {
       oldtable <- dbReadTable(myDB, "pmgmt")
 
       newtable <- oldtable[oldtable$row_id == row_id,]
-      newtable$projectName <- input$new_projectName
-      newtable$projectLead <- input$add_projectLead
+      newtable$projectName <- input$edit_projectName
+      newtable$projectLead <- input$edit_projectLead
       newtable$grantName <- input$edit_grantName
       newtable$fundingAmount <- input$edit_fundingAmount
       newtable$locations <- input$edit_locations
