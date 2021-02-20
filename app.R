@@ -22,7 +22,8 @@ ui <- fluidPage(title = "Directory",
                 h2("Staff directory and project database", align = "center"),
                 theme = shinytheme("darkly"),
                 tags$head(
-                  tags$link(rel = "stylesheet", type = "text/css", href = "mystylesheet.css")),
+                  tags$link(rel = "stylesheet", type = "text/css", href = "mystylesheet.css"),
+                  tags$style(HTML('.shiny-split-layout>div {overflow: hidden;}'))), #prevents unnecessary horizontal scroll bars on split layouts
                 useShinyjs(),
                 shinyalert::useShinyalert(),
                 navbarPage(title = NULL,
@@ -553,42 +554,93 @@ server <- function(input, output, session) {
     acsMarketingComms <- table[table$row_id == row_id, "acsMarketingComms"]
 
 
-
-    # Will need to add other fields if they want this kind of setup
     showModal(
-      modalDialog(id = "project_form",
+      modalDialog(id = "edit_project",
                   title = NULL,
+                  size="l",
                   footer = modalButton("Dismiss"),
                   easyClose = TRUE,
                   div(
                     fluidPage(
                       theme = shinytheme("darkly"),
                       splitLayout(
-                        textInput(inputId = "new_projectName",
+                        textInput(inputId = "edit_projectName",
                                   label = "Name",
                                   value = projectName),
-                        textInput(inputId = "new_projectLead",
+                        textInput(inputId = "edit_projectLead",
                                   label = "Leader",
                                   value = projectLead)),
                       splitLayout(
-                        textInput(inputId = "new_grantName",
+                        textInput(inputId = "edit_grantName",
                                   label = "Grant Name",
                                   value = grantName),
-                        textInput(inputId = "new_fundingAmount",
+                        textInput(inputId = "edit_fundingAmount",
                                   label = "Funding Amount",
                                   value = fundingAmount)
                       ),
-                      textInput(inputId = "new_locations",
-                                label = "Location",
-                                value = locations),
+                      splitLayout(
+                        textInput(inputId = "edit_locations",
+                                  label = "Location",
+                                  value = locations),
+                        textInput(inputId = "edit_fteFunded",
+                                  label = "FTE's funded:",
+                                  value = fteFunded)),
                       HTML("<br>"),
-                      textAreaInput(inputId = "new_projectDescription",
-                                    label = "Describe the Project",
-                                    value = projectDescription,
-                                    height = '400px'),
-                      actionButton("projsave_button", "Update your project info", icon=icon("save"),
+                      splitLayout(
+                        textAreaInput(inputId = "edit_projectDescription",
+                                      label = "Describe the Project",
+                                      value = projectDescription,
+                                      height = '200px'),
+                        verticalLayout(
+                          dateInput(inputId = "edit_projectStart", 
+                                    label = "Project start date",
+                                    value=as.Date(projectStart)),
+                          dateInput(inputId = "edit_projectEnd", 
+                                    label = "Project end date",
+                                    value= as.Date(projectEnd)),
+                          textInput(inputId = "edit_cancerArea",
+                                    label = "Cancer Area",
+                                    value = cancerArea)
+                        )),
+                      HTML("<br>"),
+                      splitLayout(
+                        verticalLayout(
+                          selectInput(inputId = "edit_ghORregional", label="GH or Regional Project", choices=c("GH", "Regional"), selected = ghORregional),
+                          textInput(inputId = "edit_fundingSource",
+                                    label = "Funding Source",
+                                    value = fundingSource),
+                          textInput(inputId = "edit_partnerType",
+                                    label = "Partner Type",
+                                    value = partnerType),
+                          textInput(inputId = "edit_reportingReqs",
+                                    label = "Reporting Requirements:",
+                                    value = reportingReqs)
+                        ),
+                        verticalLayout(
+                          selectInput(inputId = "edit_intersectCC", label="Intersects Cancer Control", choices=c("No", "Yes"), selected = intersectCC),
+                          textAreaInput(inputId = "edit_ifsoHow",
+                                        label = "If so, how:",
+                                        value = ifsoHow,
+                                        height = '100px'),
+                          textInput(inputId = "edit_acsMarketingComms",
+                                    label = "Comms Staff associated:",
+                                    value = acsMarketingComms),
+                          textInput(inputId = "edit_howTracked",
+                                    label = "How is project tracked?",
+                                    value = howTracked)
+                        )
+                      ),
+                      textAreaInput(inputId = "edit_projectCoreStaff",
+                                    label = "Project Core Staff:",
+                                    value = projectCoreStaff,
+                                    height = '200px',
+                                    width = '650px'),
+                      actionButton(inputId = "projsave_button",
+                                   label = "Save your edits",
+                                   icon = icon("save"),
                                    status = "success")
                     ))))
+
 
 
     # Save the data
@@ -598,15 +650,29 @@ server <- function(input, output, session) {
 
       newtable <- oldtable[oldtable$row_id == row_id,]
       newtable$projectName <- input$new_projectName
-      newtable$projectLead <- input$new_projectLead
-      newtable$grantName <- input$new_grantName
-      newtable$fundingAmount <- input$new_fundingAmount
-      newtable$locations <- input$new_locations
-      newtable$projectDescription <- input$new_projectDescription
+      newtable$projectLead <- input$add_projectLead
+      newtable$grantName <- input$edit_grantName
+      newtable$fundingAmount <- input$edit_fundingAmount
+      newtable$locations <- input$edit_locations
+      newtable$projectDescription <- input$edit_projectDescription
+      newtable$fteFunded <- input$edit_fteFunded
+      newtable$projectStart <- as.numeric(input$edit_projectStart)
+      newtable$projectEnd <- as.numeric(input$edit_projectEnd)
+      newtable$cancerArea <- input$edit_cancerArea
+      newtable$ghORregional <- ifelse(input$edit_ghORregional == "GH", TRUE, FALSE)
+      newtable$fundingSource <- input$edit_fundingSource
+      newtable$partnerType <- input$edit_partnerType
+      newtable$reportingReqs <- input$edit_reportingReqs
+      newtable$intersectCC <- ifelse(input$edit_intersectCC == "No", FALSE, TRUE)
+      newtable$ifsoHow <- input$edit_ifsoHow
+      newtable$acsMarketingComms <- input$edit_acsMarketingComms
+      newtable$howTracked <- input$edit_howTracked
+      newtable$projectCoreStaff <- input$edit_projectCoreStaff
 
       oldtable <- oldtable[oldtable$row_id != row_id,]
       final <- bind_rows(oldtable,newtable)
       final <- final[order(final$row_id),]
+      
       dbWriteTable(myDB, "pmgmt", final, overwrite = T)
 
 
@@ -756,6 +822,7 @@ observeEvent(input$save_new, {
 
   table <- dbReadTable(myDB, "analysts")
   maxRow <- as.numeric(max(table$row_id))
+  scopedRowId <- as.character(maxRow + 1) #row_id wasnt defined in the scope for the below skills, this fixed the bug that caused crashes
 
   foo <- data.frame(Name = input$addname,
                     Title = input$addtitle,
@@ -764,7 +831,7 @@ observeEvent(input$save_new, {
                     Phone = input$addphone,
                     Function = input$addfunction,
                     HireDate = input$addhiredate,
-                    row_id = as.character(maxRow + 1),
+                    row_id = scopedRowId,
                     Bio = input$addbio)
 
   # Save it to the SQL file
@@ -781,7 +848,7 @@ observeEvent(input$save_new, {
   codingString <- data.frame(Name = input$addname,
                              Type = "Coding",
                              Skills = codingString,
-                             row_id = as.character(row_id))
+                             row_id = scopedRowId)
   
   
   analyticString <- input$addAnalysis
@@ -791,7 +858,7 @@ observeEvent(input$save_new, {
   analyticString <- data.frame(Name = input$addname,
                                Type = "Analysis",
                                Skills = analyticString,
-                               row_id = as.character(row_id))
+                               row_id = scopedRowId)
   
   projString <- input$ProjMan
   projString <- projString[projString != "Other (specify)"]
@@ -800,12 +867,12 @@ observeEvent(input$save_new, {
   projString <- data.frame(Name = input$addname,
                            Type = "Project Management",
                            Skills = projString,
-                           row_id = as.character(row_id))
+                           row_id = scopedRowId)
   newSkills <- rbind(codingString, analyticString, projString)
   
   
   tempskills <- dbReadTable(myDB, "skills") 
-  tempskills <- tempskills[tempskills$row_id != row_id,]
+  tempskills <- tempskills[tempskills$row_id != scopedRowId,]
   
   final <- rbind(tempskills, newSkills)
   final <- final[final$Skills != "", ]
@@ -830,6 +897,7 @@ observeEvent(input$save_new, {
     showModal(
       modalDialog(id = "new_project",
                   title = NULL,
+                  size="l",
                   footer = modalButton("Dismiss"),
                   easyClose = TRUE,
                   div(
@@ -850,14 +918,63 @@ observeEvent(input$save_new, {
                                   label = "Funding Amount",
                                   value = "$")
                       ),
-                      textInput(inputId = "add_locations",
+                      splitLayout(
+                        textInput(inputId = "add_locations",
                                 label = "Location",
                                 value = ""),
+                        textInput(inputId = "add_fteFunded",
+                                  label = "FTE's funded:",
+                                  value = "")),
                       HTML("<br>"),
-                      textAreaInput(inputId = "add_projectDescription",
+                      splitLayout(
+                        textAreaInput(inputId = "add_projectDescription",
                                     label = "Describe the Project",
                                     value = "",
-                                    height = '400px'),
+                                    height = '200px'),
+                      verticalLayout(
+                        dateInput(inputId = "add_projectStart", 
+                                label = "Project start date",
+                                value=as.character(Sys.Date())),
+                      dateInput(inputId = "add_projectEnd", 
+                                label = "Project end date",
+                                value=as.character(Sys.Date())),
+                      textInput(inputId = "add_cancerArea",
+                                label = "Cancer Area",
+                                value = "")
+                      )),
+                      HTML("<br>"),
+                      splitLayout(
+                        verticalLayout(
+                          selectInput(inputId = "add_ghORregional", label="GH or Regional Project", choices=c("GH", "Regional")),
+                          textInput(inputId = "add_fundingSource",
+                                    label = "Funding Source",
+                                    value = ""),
+                          textInput(inputId = "add_partnerType",
+                                    label = "Partner Type",
+                                    value = ""),
+                          textInput(inputId = "add_reportingReqs",
+                                    label = "Reporting Requirements:",
+                                    value = "")
+                        ),
+                        verticalLayout(
+                          selectInput(inputId = "add_intersectCC", label="Intersects Cancer Control", choices=c("No", "Yes"), selected = "No"),
+                          textAreaInput(inputId = "add_ifsoHow",
+                                        label = "If so, how:",
+                                        value = "",
+                                        height = '100px'),
+                          textInput(inputId = "add_acsMarketingComms",
+                                    label = "Comms Staff associated:",
+                                    value = ""),
+                          textInput(inputId = "add_howTracked",
+                                    label = "How is project tracked?",
+                                    value = "")
+                        )
+                      ),
+                      textAreaInput(inputId = "add_projectCoreStaff",
+                                    label = "Project Core Staff:",
+                                    value = "",
+                                    height = '200px',
+                                    width = '650px'),
                       actionButton(inputId = "projsave_new",
                                    label = "Save your new project",
                                    icon = icon("save"),
@@ -878,7 +995,21 @@ observeEvent(input$save_new, {
         grantName = input$add_grantName,
         fundingAmount = input$add_fundingAmount,
         locations = input$add_locations,
-        projectDescription = input$add_projectDescription)
+        projectDescription = input$add_projectDescription,
+        fteFunded = input$add_fteFunded,
+        projectStart = input$add_projectStart,
+        projectEnd = input$add_projectEnd,
+        cancerArea = input$add_cancerArea,
+        ghORregional = ifelse(input$add_ghORregional == "GH", TRUE, FALSE),
+        fundingSource = input$add_fundingSource,
+        partnerType = input$add_partnerType,
+        reportingReqs = input$add_reportingReqs,
+        intersectCC = ifelse(input$add_intersectCC == "No", FALSE, TRUE),
+        ifsoHow = input$add_ifsoHow,
+        acsMarketingComms = input$add_acsMarketingComms,
+        howTracked = input$add_howTracked,
+        projectCoreStaff = input$add_projectCoreStaff
+        )
       
       # Save it to the SQL file
       dbAppendTable(myDB, "pmgmt", foo)
