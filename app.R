@@ -12,17 +12,6 @@ library(RSQLite)
 rm(list=ls())
 
 
-# 3:01pm, make a couple changes
-# Another change
-
-# This comment is a little change to the program that I can push to my new branch
-# I can then push this to the forked repository
-# Once it is pushed, I can request that the owner of the master version
-# merge it with the master account
-
-
-
-
 # The UI is pretty simple
 # It only has two sections, the staff directory and the project management section
 # I haven't done anything with project management
